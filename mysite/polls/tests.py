@@ -6,7 +6,9 @@ from django.urls import reverse
 
 def create_question(question_text, days):
     time = timezone.now() + datetime.timedelta(days=days)
-    return Question.objects.create(question_text=question_text, pub_date=time)
+    question = Question.objects.create(question_text=question_text, pub_date=time)
+    choice = Choice.objects.create(question=question, choice_text="Test choice")
+    return question
 
 
 class QuestionModelTests(TestCase):
@@ -20,7 +22,7 @@ class QuestionModelTests(TestCase):
         old_question = Question(pub_date=time)
         self.assertIs(old_question.was_published_recently(), False)
 
-    def test_was_published_recently_with_old_question(self):
+    def test_was_published_recently_with_recent_question(self):
         time = timezone.now() - datetime.timedelta(hours=23, minutes=59, seconds=59)
         recent_question = Question(pub_date=time)
         self.assertIs(recent_question.was_published_recently(), True)
@@ -75,12 +77,16 @@ class QuestionDetailViewTests(TestCase):
 
     def test_past_question(self):
         past_question = create_question(question_text='Past Question.', days=-5)
+        choice = Choice(question=past_question, choice_text="Test choice")
         url = reverse('polls:detail', args=(past_question.id,))
         response = self.client.get(url)
+        print(response)
         self.assertContains(response, past_question.question_text)
 
     def test_published_without_choices(self):
         question = create_question(question_text="Question with no choices", days=-2)
+        Choice.objects.all().delete()
+        print(question.choice_set.count())
         url = reverse('polls:detail', args=(question.id,))
         response = self.client.get(url)
         self.assertEqual(response.status_code, 404)
